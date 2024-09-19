@@ -1,0 +1,27 @@
+{
+  "name": "NGACTypescript",
+  "packageManager": "yarn@4.1.1",
+  "dependencies": {
+    "tslint": "^6.1.3",
+    "typescript": "^5.6.2"
+  },
+  "version": "",
+  "files": [
+    "./bin/*",
+    "./lib/*"
+  ],
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tslint -c tslint.json src/**/*.ts",
+    "prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22.5.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
