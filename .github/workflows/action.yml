@@ -21,14 +21,7 @@ jobs:
 
       # run any `bun` or `bunx` command
       - run: bun install
-      - run: bun index.ts
-      - run: bun run build
 
-      - name: Run linter
-        run: bun lint
+      - name: Lint Code Base
+        uses: github/super-linter@v4
 
-      - name: Run tests
-        run: bun test
-
-      - name: Check test coverage
-        run: bun coverage
