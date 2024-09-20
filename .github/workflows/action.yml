@@ -21,6 +21,7 @@ jobs:
 
       # run any `bun` or `bunx` command
       - run: bun install
+      - run: bun run build
 
       - name: Lint Code Base
         uses: github/super-linter@v4
