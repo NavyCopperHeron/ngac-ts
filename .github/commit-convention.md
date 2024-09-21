@@ -1,3 +1,4 @@
+- this commit format: [SCOPE]CATEGORY: s short explanation.
 - **SCOPE** indicates the modification's scope, for example, global, doc, user-service, etc.
 - **CATEGORY** divides changes into the following groups：
 
