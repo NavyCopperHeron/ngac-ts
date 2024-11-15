@@ -1,5 +1,5 @@
 import Association from './Association';
-import PAP from './PAP';
+import PAP from './pap';
 
 interface makeDecision {
   userId: Node;

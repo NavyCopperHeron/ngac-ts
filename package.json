@@ -3,12 +3,16 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/graphlib": "^2.1.12"
   },
   "scripts": {
     "start": "bun run index.ts"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "graphlib": "^2.1.8"
   }
 }
