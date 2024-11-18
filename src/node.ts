@@ -1,10 +1,9 @@
-// Note: link Property class
-
-class Node {
+export default class Node {
     id: number;
     name: string;
     type: string;
-    properties: Array<Property>;
+    // properties: Array<Property>;
+    // Examples have a 'property' variable but not sure what it does
 
     /**
     * Node class
@@ -17,22 +16,13 @@ class Node {
         this.id = id;
         this.name = name;
         this.type = type;
-        this.properties = new Array<Property>();
+        //this.properties = new Array<Property>();
     }
 
-    getId() {}
-
-    getName() {}
-    
-    getType() {}
-    
-    getProperties() {}
-    
-    hasProperty() {}
-    
-    addProperty() {}
-    
-    deleteProperty() {}
-    
-    updateProperty() {}
+    getId(): number { return this.id; }
+    getName(): string { return this.name; }
+    getType(): string { return this.type; }
+    equals(other: Node): boolean {
+        return this.id == other.getId() && this.name == other.getName() && this.type == other.getType();
+    }
   }
