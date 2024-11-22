@@ -2,6 +2,7 @@ import Association from './Association';
 import Assignment from './Assignment';
 import PAP from './pap';
 import Node from './Node';
+import { Graph } from 'graphlib';
 
 interface makeDecision {
   userId: Node;
@@ -11,9 +12,11 @@ interface makeDecision {
 
 class PDP {
   memory: PAP;
+  graph: Graph;
 
   constructor() {
     this.memory = new PAP;
+    this.graph = this.memory.getMainGraph()
   }
 
   /**
@@ -21,13 +24,21 @@ class PDP {
    * @param user The node of the user requesting access
    * @returns A set of all associations with source nodes that are reachable from the user node
    */
-  getSourceNodes(user: Node): Set<Association> {
+  getSourceNodes(user: number): Set<Association> {
     let visited = new Set<Node>();
-    let queue: Node[] = [user];
-    let startingNodes = new Set<Node>();
-    let involvedAssociations = new Set<Association>(); 
+    let queue: Node[] = [];
 
-    visited.add(user);
+    // Resolve the user ID to a Node
+    const startingNode = this.memory.getNodeById(user);
+    if (!startingNode) {
+      throw new Error(`Node with ID ${user} not found`);
+    }
+
+    // Start BFS with the startingNode
+    queue.push(startingNode);
+    let involvedAssociations = new Set<Association>();
+
+    visited.add(startingNode);
 
     while (queue.length > 0) {
       let currentNode = queue.shift()!;
@@ -35,8 +46,7 @@ class PDP {
       // Check for associations starting from the current node (currentNode is the source)
       let associationsStartingFromCurrent = this.memory.getAssociationsStarting(currentNode);
       associationsStartingFromCurrent.forEach(assoc => {
-        startingNodes.add(assoc.getStart());
-        involvedAssociations.add(assoc);
+        involvedAssociations.add(assoc); // Add associations to the set
       });
 
       // Now process child nodes from assignments (current node is the parent)
@@ -45,7 +55,7 @@ class PDP {
         let childNode = assign.getChild();
         if (!visited.has(childNode)) {
           visited.add(childNode);
-          queue.push(childNode);
+          queue.push(childNode); // Enqueue the child node for further processing
         }
       });
     }
@@ -56,15 +66,15 @@ class PDP {
   /**
    * 
    * @param associations Set of all associations that were reachable by the user
-   * @returns A map of destination nodes of each association with its corresponding set of operations
+   * @returns A map of destination node ids of each association with its corresponding set of operations
    */
-  getDestNodes(associations: Set<Association>): Map<Node, Set<string>> {
-    const result = new Map<Node, Set<string>>();
+  getDestNodes(associations: Set<Association>): Map<number, Set<string>> {
+    const result = new Map<number, Set<string>>();
   
     associations.forEach(association => {
       const { end, operations } = association;
-      if (!result.has(end)) {
-        result.set(end, new Set(operations));
+      if (!result.has(end.id)) {
+        result.set(end.id, new Set(operations));
       }
     });
   
@@ -77,41 +87,33 @@ class PDP {
    * @param startingNode The node to start searching from (i.e. association destination node)
    * @returns An array of object of interest nodes
    */
-  findObjects(assignments: Assignment[], startingNode: Node): Node[] {
-    const reverseGraph: Map<Node, Node[]> = new Map();
-  
-    // Build the reverse graph
-    for (const assignment of assignments) {
-      if (!reverseGraph.has(assignment.child)) {
-        reverseGraph.set(assignment.child, []);
-      }
-      reverseGraph.get(assignment.child)?.push(assignment.parent);
-    }
-  
+  findObjects(startingNodeId: number): number[] {
     // Perform reverse BFS starting from the starting node
-    const visited: Set<Node> = new Set();
-    const queue: Node[] = [startingNode];
-    visited.add(startingNode);
-  
+    const visited: Set<string> = new Set();  // Use string IDs for graphlib nodes
+    const queue: string[] = [startingNodeId.toString()]; // Queue to hold node IDs
+    visited.add(startingNodeId.toString());
+
     while (queue.length > 0) {
-      const currentNode = queue.shift()!;
-      const parents = reverseGraph.get(currentNode) || [];
-      for (const parent of parents) {
-        if (!visited.has(parent)) {
-          visited.add(parent);
-          queue.push(parent);
+      const currentNodeId = queue.shift()!;
+      const parents = this.graph.inEdges(currentNodeId) || []; // Get reverse edges using inEdges()
+
+      for (const edge of parents) {
+        const parentNodeId = edge.v;  // Parent node ID (source of the reverse edge)
+        if (!visited.has(parentNodeId)) {
+          visited.add(parentNodeId);
+          queue.push(parentNodeId); // Enqueue the parent node ID
         }
       }
     }
-  
+
     // Identify topmost nodes (objects of interest) - nodes that are not visited during reverse BFS
-    const objectsOfInterest: Node[] = [];
-    reverseGraph.forEach((_, node) => {
-      if (!visited.has(node)) {
-        objectsOfInterest.push(node);
+    const objectsOfInterest: number[] = [];
+    this.graph.nodes().forEach((nodeId: string) => {
+      if (!visited.has(nodeId)) {
+        objectsOfInterest.push(Number(nodeId));  // Convert string ID to number and add to the result array
       }
     });
-  
+
     return objectsOfInterest;
   }
 
@@ -123,60 +125,58 @@ class PDP {
    * @param destNode the association destination node linked with the target object of interest
    * @returns Boolean indicating if the object of interest is connected to all policy classes that the destination node is connected to
    */
-  findPolicyClasses(assignments: Assignment[], objectOfInterest: Node, destNode: Node): Boolean {
-    const graph: Map<Node, Node[]> = new Map();
-  
-    // Build the graph (from parent to children)
-    for (const assignment of assignments) {
-      if (!graph.has(assignment.parent)) {
-        graph.set(assignment.parent, []);
+  findPolicyClasses(objectOfInterestId: number, destNodeId: number): Boolean {
+
+    // Find policy classes (nodes with no children) in the combined graph
+    const policyClasses: Set<number> = new Set();
+    this.graph.nodes().forEach((nodeId: string) => {
+      // Check if a node has no outgoing edges (is a policy class)
+      if (!this.graph.outEdges(nodeId)?.length) {
+        policyClasses.add(Number(nodeId));
       }
-      graph.get(assignment.parent)?.push(assignment.child);
-    }
-  
-    // Find policy classes (nodes with no children)
-    const policyClasses: Set<Node> = new Set();
-    for (const [parent, children] of graph.entries()) {
-      if (children.length === 0) {
-        policyClasses.add(parent);
-      }
-    }
-  
+    });
+
     // Recursive DFS function to find and label policy classes for each node
-    const visited: Set<Node> = new Set();
-    const nodeLabels: Map<Node, Set<number>> = new Map(); // Store the policy class IDs for each node
-  
-    function dfs(node: Node): Set<number> {
+    const visited: Set<number> = new Set();
+    const nodeLabels: Map<number, Set<number>> = new Map();
+
+    function dfs(nodeId: number, graph: Graph): Set<number> {
       // If already visited, return the labeled nodes for this node
-      if (visited.has(node)) {
-        return nodeLabels.get(node) || new Set();
+      if (visited.has(nodeId)) {
+        return nodeLabels.get(nodeId) || new Set();
       }
-  
-      visited.add(node);
-  
-      // If this node is a policy class, label it with its own ID
+
+      visited.add(nodeId);
+
+      // Get the node associated with the nodeId
+      const node : Graph.node = graph.node(nodeId.toString());
       let reachablePolicyClasses: Set<number> = new Set();
-      if (policyClasses.has(node)) {
-        reachablePolicyClasses.add(node.id);
+
+      // If this node is a policy class, label it with its own ID
+      if (policyClasses.has(nodeId)) {
+        reachablePolicyClasses.add(nodeId);
       }
-  
+
       // Visit all the children and propagate policy class IDs upwards
-      const children = graph.get(node) || [];
-      for (const child of children) {
-        const childPolicyClasses = dfs(child);
+      const edges = graph.outEdges(nodeId.toString()) || [];
+      for (const edge of edges) {
+        const targetNodeId = Number(edge.w); // Convert the target node ID to a number
+        const childPolicyClasses = dfs(targetNodeId, graph);
         childPolicyClasses.forEach((id) => reachablePolicyClasses.add(id));
       }
-  
-      nodeLabels.set(node, reachablePolicyClasses);
+
+      nodeLabels.set(nodeId, reachablePolicyClasses);
       return reachablePolicyClasses;
     }
-  
-    dfs(objectOfInterest);
 
-    const objSet = nodeLabels.get(objectOfInterest) || new Set();
-    const destSet = nodeLabels.get(destNode) || new Set();
+    // Start DFS from the objectOfInterestId
+    dfs(objectOfInterestId, this.graph);
+
+    const objSet = nodeLabels.get(objectOfInterestId) || new Set();
+    const destSet = nodeLabels.get(destNodeId) || new Set();
+    
+    // Check if the object of interest contains all policy classes that include the destination node
     if ([...destSet].every(item => objSet.has(item))) {
-      // If the object of interest contains all policy classes containing dest node
       return true;
     }
 
@@ -209,33 +209,37 @@ class PDP {
    * @param permissions Set of operations that are requested
    * @returns Boolean of whether access is granted or not
    */
-  calculateAccess(user: Node, target: Node, permissions: Set<string>): Boolean {
+  async evaluateRequest(user: number, resource: number, action: string): Promise<string> {
     const accessibleObjects: Set<string> = new Set();
     const assignments: Array<Assignment> = this.memory.getAllAssignments();
-
-    // Get all source association nodes
-    const associations = this.getSourceNodes(user);
-
-    // Get a map of all destination nodes with allowable operations
-    const destNodeOperations = this.getDestNodes(associations);
-
-    const objectsOfInterest: Map<Node, Node[]> = new Map();
+  
+    // Get all source association nodes - Assuming this is an async function
+    const associations = this.getSourceNodes(user); 
+  
+    // Get a map of all destination nodes with allowable operations - Assuming this is an async function
+    const destNodeIds = this.getDestNodes(associations);
+  
+    const objectsOfInterest: Map<number, number[]> = new Map();
     const allOperations: Set<string>[] = [];
-
-    destNodeOperations.forEach((operations, endNode) => {
-      const objects: Node[] = this.findObjects(assignments, endNode)
-
-      if (objects.some(node => node.id === target.id) && 
-          this.findPolicyClasses(assignments, target, endNode)) {
+  
+    // Iterate over destination node IDs and check conditions
+    for (const [endNode, operations] of destNodeIds) {
+      const objectIds: number[] = this.findObjects(endNode); // Assuming this is an async function
+  
+      if (objectIds.some(id => id === resource) && 
+          this.findPolicyClasses(resource, endNode)) { // Assuming async function
         allOperations.push(operations);
       }
-    });
-    
-    const intersection: Set<string> = this.findIntersection(allOperations);
-    if ([...permissions].every(item => intersection.has(item))) {
-      return true;
     }
-
-    return false;
+  
+    // Find intersection of all allowed operations
+    const intersection: Set<string> = this.findIntersection(allOperations);
+  
+    // Check if the requested action is in the intersection
+    if (intersection.has(action)) {
+      return "Grant";
+    }
+  
+    return "Not Granted";
   }
 }
