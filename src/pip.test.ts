@@ -1,38 +1,18 @@
-import { expect, test } from "bun:test";
-import { PolicyInformationPoint } from "./pip.ts";
-import Node from './node';
-import { Graph } from 'graphlib';
-test("create new example", () => {
-  // Example usage:
-  const pip = new PolicyInformationPoint();
-  // Initialize the graph
-  const graph = new Graph();
-  // Add policyClass node
-  const policyClassNode = new Node(1, "PolicyClass1", "policyClass");
-  pip.addNode(policyClassNode);
+import { PolicyInformationPoint } from "./pip";
+import { Graph, json as graphlibJson } from "graphlib";
 
-  // Add some regular nodes to the main graph
-  const nodeA = new Node(2, "UserNode", "user");
-  const nodeB = new Node(3, "ObjectNode", "object");
-  const nodeC = new Node(4, "ObjectAttributeNode", "objectAttribute");
-  pip.addNode(nodeA);
-  pip.addNode(nodeC);
+const graph = new Graph({ directed: true });
+graph.setNode("1", { name: "UserNode", type: "user" });
+graph.setNode("2", { name: "ResourceNode", type: "object" });
+graph.setEdge("1", "2", { permission: "read" });
 
-  // Add nodes to the graph
-  graph.setNode(nodeA.id.toString(), nodeA);
-  graph.setNode(nodeB.id.toString(), nodeB);
-  graph.setNode(nodeC.id.toString(), nodeC);
+const graphJson = JSON.stringify(graphlibJson.write(graph));
 
-  // Add an edge between nodeA and nodeB
-  graph.setEdge(nodeB.id.toString(), nodeC.id.toString());
+const pip = new PolicyInformationPoint();
+pip.storeGraph(graphJson);
 
-  // Connect policyClass node to regular graph nodes
-  pip.connectPolicyClassNode(1, 2); // Connect PolicyClass1 to UserNode
-  pip.connectPolicyClassNode(1, 4); // Connect PolicyClass1 to ObjectNode
+const retrievedGraph = pip.retrieveGraph();
+console.log("Retrieved Nodes:", retrievedGraph.nodes());
+console.log("Retrieved Edges:", retrievedGraph.edges());
 
-  // Create a combined graph for PolicyClass1
-  const combinedGraph = pip.createCombinedGraph(1);
-
-  // Display nodes in the combined graph
-  console.log("Combined Graph Nodes:", combinedGraph.nodes().map(id => combinedGraph.node(id)));
-});
+console.log("Stored JSON:", pip.retrieveGraphAsJson());

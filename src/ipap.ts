@@ -1,11 +1,11 @@
 import { Graph } from 'graphlib';
+import type { Edge } from 'graphlib';
 import Node from './node';
 
 /**
  * Interface for Policy Administration Point (PAP)
  * 
- * Manages the main graph and policyClass nodes, ensuring dynamic updates
- * to combined graphs when the main graph changes.
+ * Manages the whole graph
  */
 export default interface IPAP {
     // Node management
@@ -17,14 +17,7 @@ export default interface IPAP {
     // Edge management
     addEdge(fromNodeId: number, toNodeId: number, edgeAttributes: { permission: string }): void;
     updateEdge(fromNodeId: number, toNodeId: number, newEdgeAttributes: { permission: string }): void;
-
-    // Policy class management
-    addPolicyClassNode(node: Node): void;
-    connectPolicyClassNode(policyClassId: number, nodeId: number): void;
-    deletePolicyClassNode(policyClassId: number): void;
-    getPolicyClassNode(policyClassId: number): Node | undefined;
-
-    // Graph operations
-    createCombinedGraph(policyClassId: number): Graph;
+    deleteEdge(fromNodeId: number, toNodeId: number):void;
+    getEdge(fromNodeId: number, toNodeId: number):Edge | undefined;
     getMainGraph(): Graph;
 }

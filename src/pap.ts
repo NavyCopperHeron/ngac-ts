@@ -18,98 +18,138 @@
 import { Graph } from 'graphlib';
 import type IPAP from './ipap';
 import Node from './node';
-
+import type { Edge } from 'graphlib';
 /**
- * PolicyAdministrationPoint class
+ * Policy Administration Point (PAP)
  * 
- * Manages nodes, their relationships, and dynamically updates combined graphs.
- * Edges in the graph represent relationships and include permissions (read/write).
+ * Implements the management of nodes, edges, and the directed graph.
  */
-export class PolicyAdministrationPoint {
-  private graph: Graph = new Graph({ directed: true });
-  private policyClassNodes: Map<number, Node> = new Map();
-  private policyClassConnections: Map<number, string[]> = new Map();
+export class PolicyAdministrationPoint implements IPAP {
+    private graph: Graph;
 
-  addNode(node: Node): void {
-      this.graph.setNode(node.id.toString(), node);
-  }
+    constructor() {
+        this.graph = new Graph({ directed: true });
+    }
 
-  addEdge(fromNodeId: number, toNodeId: number, edgeAttributes?: { permission: string }): void {
-      if (!this.graph.hasNode(fromNodeId.toString()) || !this.graph.hasNode(toNodeId.toString())) {
-          throw new Error(`One or both nodes (${fromNodeId}, ${toNodeId}) do not exist`);
-      }
-      this.graph.setEdge(fromNodeId.toString(), toNodeId.toString(), edgeAttributes || {});
-  }
+    /**
+     * Adds a node to the graph. Optionally connects it to another node with an edge and attributes.
+     * @param node - The node to add.
+     * @param connectTo - The ID of the node to connect to (optional).
+     * @param edgeAttributes - Attributes for the edge (optional).
+     */
+    addNode(node: Node, connectTo?: number, edgeAttributes?: { permission: string }): void {
+        this.graph.setNode(node.id.toString(), node);
 
-  addPolicyClassNode(node: Node): void {
-      if (node.type !== "policyClass") {
-          throw new Error("Node type must be 'policyClass'");
-      }
-      this.policyClassNodes.set(node.id, node);
-      this.policyClassConnections.set(node.id, []);
-  }
+        if (connectTo !== undefined && edgeAttributes) {
+            this.addEdge(node.id, connectTo, edgeAttributes);
+        }
+    }
 
-  connectPolicyClassNode(policyClassId: number, nodeId: number): void {
-      if (!this.policyClassNodes.has(policyClassId)) {
-          throw new Error(`PolicyClass node with ID ${policyClassId} does not exist`);
-      }
-      if (!this.graph.hasNode(nodeId.toString())) {
-          throw new Error(`Node with ID ${nodeId} does not exist`);
-      }
+    /**
+     * Deletes a node and all nodes and edges connected to it.
+     * @param nodeId - The ID of the node to delete.
+     */
+    deleteNode(nodeId: number): void {
+        const nodeIdStr = nodeId.toString();
 
-      const connections = this.policyClassConnections.get(policyClassId) || [];
-      if (!connections.includes(nodeId.toString())) {
-          connections.push(nodeId.toString());
-          this.policyClassConnections.set(policyClassId, connections);
-      }
-  }
+        if (!this.graph.hasNode(nodeIdStr)) {
+            throw new Error(`Node with ID ${nodeId} does not exist`);
+        }
 
-  createCombinedGraph(policyClassId: number): Graph {
-      const combinedGraph = new Graph({ directed: true });
-      const policyClassNode = this.policyClassNodes.get(policyClassId);
+        // Collect all connected nodes and edges
+        const connectedEdges = this.graph.nodeEdges(nodeIdStr) || [];
 
-      if (!policyClassNode) {
-          throw new Error(`PolicyClass node with ID ${policyClassId} not found`);
-      }
+        for (const edge of connectedEdges) {
+            const targetNodeId = edge.v === nodeIdStr ? edge.w : edge.v;
+            this.deleteEdge(Number(edge.v), Number(edge.w));
+            if (this.graph.hasNode(targetNodeId)) {
+                this.graph.removeNode(targetNodeId);
+            }
+        }
 
-      // Add the policyClass node to the combined graph
-      combinedGraph.setNode(policyClassNode.id.toString(), policyClassNode);
+        // Remove the node itself
+        this.graph.removeNode(nodeIdStr);
+    }
 
-      // Track visited nodes and perform a breadth-first traversal
-      const visited = new Set<string>();
-      const queue = [...(this.policyClassConnections.get(policyClassId) || [])];
+    /**
+     * Retrieves a node from the graph.
+     * @param nodeId - The ID of the node to retrieve.
+     * @returns The node, or undefined if it does not exist.
+     */
+    getNode(nodeId: number): Node | undefined {
+        return this.graph.node(nodeId.toString());
+    }
 
-      while (queue.length > 0) {
-          const currentNodeId = queue.shift()!;
-          if (visited.has(currentNodeId)) {
-              continue;
-          }
-          visited.add(currentNodeId);
+    /**
+     * Updates a node in the graph.
+     * @param nodeId - The ID of the node to update.
+     * @param newData - The updated data for the node.
+     */
+    updateNode(nodeId: number, newData: Partial<Node>): void {
+        const existingNode = this.getNode(nodeId);
+        if (!existingNode) {
+            throw new Error(`Node with ID ${nodeId} does not exist`);
+        }
 
-          // Add the node to the combined graph
-          const currentNode = this.graph.node(currentNodeId);
-          if (currentNode) {
-              combinedGraph.setNode(currentNodeId, currentNode);
-          }
+        const updatedNode = { ...existingNode, ...newData };
+        this.graph.setNode(nodeId.toString(), updatedNode);
+    }
 
-          // Add edges from the main graph
-          const edges = this.graph.outEdges(currentNodeId) || [];
-          for (const edge of edges) {
-              const targetNodeId = edge.w;
-              const edgeAttributes = this.graph.edge(edge);
+    /**
+     * Adds an edge between two nodes in the graph with attributes.
+     * @param fromNodeId - The ID of the source node.
+     * @param toNodeId - The ID of the target node.
+     * @param edgeAttributes - Attributes for the edge.
+     */
+    addEdge(fromNodeId: number, toNodeId: number, edgeAttributes: { permission: string }): void {
+        const fromNodeStr = fromNodeId.toString();
+        const toNodeStr = toNodeId.toString();
 
-              if (!visited.has(targetNodeId)) {
-                  queue.push(targetNodeId);
-              }
+        if (!this.graph.hasNode(fromNodeStr) || !this.graph.hasNode(toNodeStr)) {
+            throw new Error(`One or both nodes (${fromNodeId}, ${toNodeId}) do not exist`);
+        }
 
-              combinedGraph.setEdge(edge.v, edge.w, edgeAttributes);
-          }
-      }
+        this.graph.setEdge(fromNodeStr, toNodeStr, edgeAttributes);
+    }
 
-      return combinedGraph;
-  }
+    /**
+     * Updates the attributes of an edge between two nodes in the graph.
+     * @param fromNodeId - The ID of the source node.
+     * @param toNodeId - The ID of the target node.
+     * @param newEdgeAttributes - New attributes for the edge.
+     */
+    updateEdge(fromNodeId: number, toNodeId: number, newEdgeAttributes: { permission: string }): void {
+        if (!this.graph.hasEdge(fromNodeId.toString(), toNodeId.toString())) {
+            throw new Error(`Edge between ${fromNodeId} and ${toNodeId} does not exist`);
+        }
 
-  getMainGraph(): Graph {
-      return this.graph;
-  }
+        this.graph.setEdge(fromNodeId.toString(), toNodeId.toString(), newEdgeAttributes);
+    }
+
+    /**
+     * Deletes an edge between two nodes.
+     * @param fromNodeId - The ID of the source node.
+     * @param toNodeId - The ID of the target node.
+     */
+    deleteEdge(fromNodeId: number, toNodeId: number): void {
+        this.graph.removeEdge(fromNodeId.toString(), toNodeId.toString());
+    }
+
+    /**
+     * Retrieves an edge between two nodes.
+     * @param fromNodeId - The ID of the source node.
+     * @param toNodeId - The ID of the target node.
+     * @returns The edge, or undefined if it does not exist.
+     */
+    getEdge(fromNodeId: number, toNodeId: number): Edge | undefined {
+        return this.graph.edge(fromNodeId.toString(), toNodeId.toString());
+    }
+
+    /**
+     * Retrieves the main graph.
+     * @returns The graph.
+     */
+    getMainGraph(): Graph {
+        return this.graph;
+    }
 }
