@@ -1,19 +1,5 @@
-// import Association from './Association';
-
-// /**
-//  * Stores and returns stored data
-//  */
-
-// export default class PAP {
-
-//   createAssociation(start: Node, end: Node, operations: Array<String>) {}
-
-//   getAssociations(start: Node) {
-//     let associations: Association[] = [];
-//     return associations;
-//   }
-
-// }
+import Association from './Association';
+import Assignment from './Assignment';
 
 import { Graph } from 'graphlib';
 import type IPAP from './ipap';
@@ -126,30 +112,80 @@ export class PolicyAdministrationPoint implements IPAP {
         this.graph.setEdge(fromNodeId.toString(), toNodeId.toString(), newEdgeAttributes);
     }
 
-    /**
-     * Deletes an edge between two nodes.
-     * @param fromNodeId - The ID of the source node.
-     * @param toNodeId - The ID of the target node.
-     */
-    deleteEdge(fromNodeId: number, toNodeId: number): void {
-        this.graph.removeEdge(fromNodeId.toString(), toNodeId.toString());
-    }
 
-    /**
-     * Retrieves an edge between two nodes.
-     * @param fromNodeId - The ID of the source node.
-     * @param toNodeId - The ID of the target node.
-     * @returns The edge, or undefined if it does not exist.
-     */
-    getEdge(fromNodeId: number, toNodeId: number): Edge | undefined {
-        return this.graph.edge(fromNodeId.toString(), toNodeId.toString());
-    }
+  assignments: Array<Assignment>;
+  associations: Array<Association>;
 
-    /**
-     * Retrieves the main graph.
-     * @returns The graph.
-     */
-    getMainGraph(): Graph {
-        return this.graph;
+  constructor() {
+    this.assignments = new Array<Assignment>();
+    this.associations = new Array<Association>();
+  }
+
+  createAssignment(parent: Node, child: Node) {
+    var assign = new Assignment(parent, child);
+    for (const a of this.getAssignmentsParent(parent)) {
+      // If this assignment already exists
+      if (a.equals(assign)) {
+        return null;
+      }
     }
+    this.assignments.push(assign);
+    return assign;
+  }
+
+  createAssociation(start: Node, end: Node, operations: Set<string>) {
+    var assoc = new Association(start, end, operations);
+    for (const a of this.getAssociationsStarting(start)) {
+      // If this association already exists
+      if (a.equals(assoc)) {
+        return null;
+      }
+    }
+    this.associations.push(assoc);
+    return assoc;
+  }
+
+  getAssociationsStarting(start: Node) {
+    let all: Association[] = [];
+    for (const a of this.associations) {
+      if (start.equals(a.getStart())) {
+        all.push(a);
+      }
+    }
+    return all;
+  }
+
+  getAssociationsEnding(end: Node) {
+    let all: Association[] = [];
+    for (const a of this.associations) {
+      if (end.equals(a.getEnd())) {
+        all.push(a);
+      }
+    }
+    return all;
+  }
+
+  getAssignmentsParent(parent: Node) {
+    let all: Assignment[] = [];
+    for (const a of this.assignments) {
+      if (parent.equals(a.getParent())) {
+        all.push(a);
+      }
+    }
+    return all;
+  }
+
+  getAssignmentsChild(child: Node) {
+    let all: Assignment[] = [];
+    for (const a of this.assignments) {
+      if (child.equals(a.getChild())) {
+        all.push(a);
+      }
+    }
+    return all;
+  }
+
+  getAllAssociations() { return this.associations; }
+  getAllAssignments() { return this.assignments; }
+
 }
