@@ -1,25 +1,15 @@
-import type IPEP  from './ipep';
-import type IPDP  from './ipdp';
 /**
- * PolicyEnforcementPoint class
+ * Policy Enforcement Point (PEP) External Interface
  * 
- * This class implements the IPEP interface, managing access requests
- * by forwarding them to the PDP and returning the PDP's access decision.
+ * Defines the methods for external entities to request access to resources.
  */
-export class PolicyEnforcementPoint implements IPEP {
-    constructor(private pdp: IPDP) {}
-
+export default interface PEP {
     /**
-     * Requests access to a resource by passing the request to the PDP.
+     * Requests access to a resource.
      * @param user - The user requesting access
-     * @param resource - The resource the user wishes to access
-     * @param action - The action the user intends to perform on the resource
-     * @returns A promise that resolves to the PDP's access decision (e.g., "Access granted" or "Access denied")
+     * @param resource - The resource to which access is requested
+     * @param action - The action the user intends to perform (e.g., "read", "write")
+     * @returns A promise that resolves to an access decision (e.g., "Access granted" or "Access denied")
      */
-    async requestAccess(user: number, resource: number, action: string): Promise<string> {
-        const decision = await this.pdp.evaluateRequest(user, resource, action);
-        return decision === "Grant"
-            ? `Access granted to ${resource}`
-            : `Access denied to ${resource}`;
-    }
+    requestAccess(user: number, resource: number, action: string): Promise<string>;
 }

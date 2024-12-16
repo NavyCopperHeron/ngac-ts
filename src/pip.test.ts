@@ -1,4 +1,4 @@
-import { PolicyInformationPoint } from "./pip";
+import { PolicyInformationPoint } from "./PIPImpl";
 import { Graph, json as graphlibJson } from "graphlib";
 
 const graph = new Graph({ directed: true });

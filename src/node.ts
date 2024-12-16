@@ -111,4 +111,8 @@ export default class Node {
             this.addProperty(key, newValue);
         }
     }
+
+    equals(other: Node): boolean {
+        return this.id == other.getId() && this.name == other.getName() && this.type == other.getType();
+    }
 }

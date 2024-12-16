@@ -10,7 +10,7 @@ on:
 
 jobs:
   my-job:
-    name: my-job
+    name: bun-test
     runs-on: ubuntu-latest
     steps:
       # ...
