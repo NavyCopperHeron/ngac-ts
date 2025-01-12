@@ -50,13 +50,13 @@ export default class PolicyDecisionPoint implements PDP {
         involvedAssociations.add(assoc); // Add associations to the set
       });
 
-      // Now process child nodes from assignments (current node is the parent)
-      let assignmentsForCurrent = this.memory.getAssignmentsParent(currentNode);
+      // Now process parents nodes from assignments (current node is the child)
+      let assignmentsForCurrent = this.memory.getAssignmentsChild(currentNode);
       assignmentsForCurrent.forEach(assign => {
-        let childNode = assign.getChild();
-        if (!visited.has(childNode)) {
-          visited.add(childNode);
-          queue.push(childNode); // Enqueue the child node for further processing
+        let parentNode = assign.getParent();
+        if (!visited.has(parentNode)) {
+          visited.add(parentNode);
+          queue.push(parentNode); // Enqueue the parent node for further processing
         }
       });
     }
@@ -90,31 +90,42 @@ export default class PolicyDecisionPoint implements PDP {
    */
   findObjects(startingNodeId: number): number[] {
     // Perform reverse BFS starting from the starting node
-    const visited: Set<string> = new Set();  // Use string IDs for graphlib nodes
-    const queue: string[] = [startingNodeId.toString()]; // Queue to hold node IDs
-    visited.add(startingNodeId.toString());
+    let visited = new Set<Node>();
+    let queue: Node[] = [];
 
+    // Resolve the user ID to a Node
+    const startingNode = this.memory.getNode(startingNodeId);
+    if (!startingNode) {
+      throw new Error(`Node with ID ${startingNodeId} not found`);
+    }
+    queue.push(startingNode)
+    visited.add(startingNode);
+    let involvedObjects = new Set<Node>();
     while (queue.length > 0) {
-      const currentNodeId = queue.shift()!;
-      const parents = this.graph.inEdges(currentNodeId) || []; // Get reverse edges using inEdges()
+      let currentNode = queue.shift()!;
 
-      for (const edge of parents) {
-        const parentNodeId = edge.v;  // Parent node ID (source of the reverse edge)
-        if (!visited.has(parentNodeId)) {
-          visited.add(parentNodeId);
-          queue.push(parentNodeId); // Enqueue the parent node ID
-        }
+      // Check the current node 
+      if(currentNode.type == 'object')
+      {
+        involvedObjects.add(currentNode);
       }
+
+      // Now process child nodes from assignments (current node is the parent)
+      let assignmentsForCurrent = this.memory.getAssignmentsParent(currentNode);
+      assignmentsForCurrent.forEach(assign => {
+        let childNode = assign.getChild();
+        if (!visited.has(childNode)) {
+          visited.add(childNode);
+          queue.push(childNode); // Enqueue the child node for further processing
+        }
+      });
     }
 
     // Identify topmost nodes (objects of interest) - nodes that are not visited during reverse BFS
     const objectsOfInterest: number[] = [];
-    this.graph.nodes().forEach((nodeId: string) => {
-      if (!visited.has(nodeId)) {
-        objectsOfInterest.push(Number(nodeId));  // Convert string ID to number and add to the result array
-      }
-    });
-
+    for (const value of involvedObjects) {
+      objectsOfInterest.push(Number(value.getId()));
+  }
     return objectsOfInterest;
   }
 
@@ -126,7 +137,7 @@ export default class PolicyDecisionPoint implements PDP {
    * @param destNode the association destination node linked with the target object of interest
    * @returns Boolean indicating if the object of interest is connected to all policy classes that the destination node is connected to
    */
-  findPolicyClasses(objectOfInterestId: number, destNodeId: number): Boolean {
+  findPolicyClasses(objectOfInterestId: number, destNodeId: number): [Set<number>, Set<number>] {
 
     // Find policy classes (nodes with no children) in the combined graph
     const policyClasses: Set<number> = new Set();
@@ -175,13 +186,8 @@ export default class PolicyDecisionPoint implements PDP {
 
     const objSet = nodeLabels.get(objectOfInterestId) || new Set();
     const destSet = nodeLabels.get(destNodeId) || new Set();
-    
-    // Check if the object of interest contains all policy classes that include the destination node
-    if ([...destSet].every(item => objSet.has(item))) {
-      return true;
-    }
 
-    return false;
+    return [objSet,destSet];
   }
 
   /**
@@ -216,19 +222,22 @@ export default class PolicyDecisionPoint implements PDP {
   
     // Get all source association nodes - Assuming this is an async function
     const associations = this.getSourceNodes(user); 
-  
     // Get a map of all destination nodes with allowable operations - Assuming this is an async function
     const destNodeIds = this.getDestNodes(associations);
-  
+
     const objectsOfInterest: Map<number, number[]> = new Map();
     const allOperations: Set<string>[] = [];
-  
+    const policy = new Set<number>;
+    const policies = new Set<number>;
     // Iterate over destination node IDs and check conditions
     for (const [endNode, operations] of destNodeIds) {
       const objectIds: number[] = this.findObjects(endNode); // Assuming this is an async function
-  
-      if (objectIds.some(id => id === resource) && 
-          this.findPolicyClasses(resource, endNode)) { // Assuming async function
+      if (objectIds.some(id => id === resource)) { // Assuming async function
+        const [objSet,destSet] = this.findPolicyClasses(resource, endNode);
+        objSet.forEach((value) => policies.add(value));
+        destSet.forEach((value) => policy.add(value));
+      }
+      if(([...policies].every((value) => policy.has(value))) && policies.size > 0 && policy.size > 0){
         allOperations.push(operations);
       }
     }

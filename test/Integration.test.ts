@@ -1,8 +1,8 @@
 import { expect, test, describe } from "bun:test";
-import { PolicyEnforcementPoint } from "./PEPImpl";
-import { PolicyInformationPoint } from "./PIPImpl";
-import PolicyDecisionPoint from "./PDPImpl";
-import Node from "./Node";
+import { PolicyEnforcementPoint } from "../src/PEPImpl";
+import { PolicyInformationPoint } from "../src/PIPImpl";
+import PolicyDecisionPoint from "../src/PDPImpl";
+import Node from "../src/Node";
 
 describe('NGAC Integration Tests', () => {
     test('complete NGAC workflow - should grant access when properly configured', async () => {
@@ -27,24 +27,17 @@ describe('NGAC Integration Tests', () => {
         pap.addNode(projectPC);
 
         // Create assignments
-        console.log("Creating assignments...");
         pap.createAssignment(developers, alice); // Alice is a developer
         pap.createAssignment(projectPC, codeRepo); // CodeRepo is under ProjectPC
         pap.createAssignment(codeRepo, sourceCode); // SourceCode is in CodeRepo
 
         // Create association
-        console.log("Creating association...");
         pap.createAssociation(developers, codeRepo, new Set(["read", "write"]));
 
         // Store graph in PIP
         const graphJson = JSON.stringify(pap.getMainGraph());
         pip.storeGraph(graphJson);
-        // Add these debug logs after storing the graph
-        console.log("Stored graph:", graphJson);
         const retrievedGraph = pip.retrieveGraphAsJson();
-        console.log("Retrieved graph:", retrievedGraph);
-        // Test access request through PEP
-        console.log("Testing access request...");
         const result = await pep.requestAccess(1, 4, "read"); // Alice trying to read SourceCode
 
         // Verify access is granted
@@ -88,4 +81,80 @@ describe('NGAC Integration Tests', () => {
         // Verify access is denied
         expect(result).toBe("Access denied to 4");
     });
+
+
+    /**
+     *  The test case is in the paper 'Linear Time Algorithms to Restrict Insider Access using Multi-Policy Access Control Systems'
+    */
+    test('NGAC workflow - test case in paper', async () => {
+        // Initialize components
+        const pdp = new PolicyDecisionPoint();
+        const pep = new PolicyEnforcementPoint(pdp);
+        const pip = new PolicyInformationPoint();
+
+        // Create nodes
+        const u1 = new Node(1, "u1", "user");
+        const ua1 = new Node(2, "ua1", "userAttribute");
+        const ua2 = new Node(3, "ua2", "userAttribute");
+        const o1 = new Node(4, "o1", "object");
+        const o2 = new Node(5, "o2", "object");
+        const o3 = new Node(6, "o3", "object");
+        const oa1 = new Node(7, "oa1", "objectAttribute");
+        const oa2 = new Node(8, "oa2", "objectAttribute");
+        const oa3 = new Node(9, "oa3", "objectAttribute");
+        const oa4 = new Node(10, "oa4", "objectAttribute");
+        const oa5 = new Node(11, "oa5", "objectAttribute");
+        const pc1 = new Node(12, "pc1", "policyClass");
+        const pc2 = new Node(13, "pc2", "policyClass");
+
+        // Setup PAP
+        const pap = pdp.memory;
+        pap.addNode(u1);
+        pap.addNode(ua1);
+        pap.addNode(ua2);
+        pap.addNode(o1);
+        pap.addNode(o2);
+        pap.addNode(o3);
+        pap.addNode(oa1);
+        pap.addNode(oa2);
+        pap.addNode(oa3);
+        pap.addNode(oa4);
+        pap.addNode(oa5);
+        pap.addNode(pc1);
+        pap.addNode(pc2);
+
+
+        // Create assignments
+        pap.createAssignment(ua1, u1);
+        pap.createAssignment(ua2, ua1);
+        pap.createAssignment(oa1, o1);
+        pap.createAssignment(oa2, o2);
+        pap.createAssignment(oa3, o3);
+        pap.createAssignment(oa5, o2);
+        pap.createAssignment(oa5, oa3);
+        pap.createAssignment(oa1, oa2);
+        pap.createAssignment(oa4, oa5);
+        pap.createAssignment(pc1, ua2);
+        pap.createAssignment(pc1, oa4);
+        pap.createAssignment(pc2, oa1);
+        pap.createAssignment(pc2, oa3);
+
+
+        // Create association
+        pap.createAssociation(ua1, oa1, new Set(["read"]));
+        pap.createAssociation(ua2, oa4, new Set(["read"]));
+
+        const graphJson = JSON.stringify(pap.getMainGraph());
+        pip.storeGraph(graphJson);
+
+        const result1 = await pep.requestAccess(1, 4, "read");
+        const result2 = await pep.requestAccess(1, 5, "read");
+        const result3 = await pep.requestAccess(1, 6, "read");
+        // Verify access is granted
+        expect(result1).toBe("Access granted to 4");
+        expect(result2).toBe("Access granted to 5");
+        expect(result3).toBe("Access denied to 6");
+
+    });
+
 });

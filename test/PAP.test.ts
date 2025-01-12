@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import PolicyAdministrationPoint from "./PAPImpl";
-import Node from "./Node";
+import PolicyAdministrationPoint from "../src/PAPImpl";
+import Node from "../src/Node";
 import { Graph } from "graphlib";
 // written by Cline
 test("PAP - Node Management", () => {
@@ -100,7 +100,7 @@ test("PAP - Graph Structure", () => {
     expect(nodes).toContain("5");
 
     // Verify edges represent assignments and associations
-    expect(edges.length).toBe(0); 
+    expect(edges.length).toBe(5); 
     
     // Check edge properties
     edges.forEach(edge => {
