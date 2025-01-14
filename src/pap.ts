@@ -1,6 +1,6 @@
 import { Graph } from 'graphlib';
 import type { Edge } from 'graphlib';
-import Node from './Node';
+import Node from './node.ts';
 import Association from './Association';
 import Assignment from './Assignment';
 /**
@@ -28,6 +28,6 @@ export default interface PAP {
     createAssociation(start: Node, end: Node, operations: Set<string>):any;
     getAssociationsStarting(start: Node):Association[];
     getAssociationsEnding(end: Node):Association[];
-    getAssignmentsParent(parent: Node):Assignment[];
-    getAssignmentsChild(child: Node):Assignment[];
+    getAssignmentsParent(parent: number):number[];
+    getAssignmentsChild(child: number):number[];
 }

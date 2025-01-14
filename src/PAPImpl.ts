@@ -2,8 +2,8 @@ import Association from './Association';
 import Assignment from './Assignment';
 
 import { Graph } from 'graphlib';
-import type PAP from './PAP';
-import Node from './Node';
+import type PAP from './pap.ts';
+import Node from './node.ts';
 import type { Edge } from 'graphlib';
 /**
  * Policy Administration Point (PAP)
@@ -144,9 +144,9 @@ export default class PolicyAdministrationPoint implements PAP {
     createAssignment(parent: Node, child: Node) {
         var assign = new Assignment(parent, child);
         this.addEdge(child.id, parent.id);
-        for (const a of this.getAssignmentsParent(parent)) {
+        for (const a of this.getAssignmentsParent(parent.id)) {
           // If this assignment already exists
-          if (a.equals(assign)) {
+          if (a == child.id) {
             return null;
           }
         }
@@ -187,21 +187,25 @@ export default class PolicyAdministrationPoint implements PAP {
         return all;
       }
     
-      getAssignmentsParent(parent: Node) {
-        let all: Assignment[] = [];
+      getAssignmentsParent(parent: number): number[] {
+        const parentNode = this.getNode(parent);
+        let all: number[] = [];
         for (const a of this.assignments) {
-          if (parent.equals(a.getParent())) {
-            all.push(a);
+          if (parentNode && parentNode.equals(a.getParent())) {
+            all.push(a.child.id);
           }
         }
         return all;
       }
     
-      getAssignmentsChild(child: Node) {
-        let all: Assignment[] = [];
+      getAssignmentsChild(child: number): number[] {
+        const childNode = this.getNode(child);
+        let all: number[] = [];
+        console.log('all assigns: ', this.assignments)
+        console.log('childnode: ', childNode)
         for (const a of this.assignments) {
-          if (child.equals(a.getChild())) {
-            all.push(a);
+          if (childNode && childNode.equals(a.getChild())) {
+            all.push(a.parent.id);
           }
         }
         return all;

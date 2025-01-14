@@ -1,14 +1,14 @@
 import Association from './Association';
 import Assignment from './Assignment';
 import PAP from './PAPImpl';
-import Node from './Node';
+import Node from './node.ts';
 import { Graph } from 'graphlib';
-import type PDP from './PDP';
+import type PDP from './pdp.ts';
 
-interface makeDecision {
-  userId: Node;
-  targetId: Node;
-  permissions: Set<String>; // e.g. read, write
+interface evaluateRequest {
+  user: number;
+  resource: number;
+  action: Set<String>; // e.g. read, write
 }
 
 export default class PolicyDecisionPoint implements PDP {
@@ -51,12 +51,12 @@ export default class PolicyDecisionPoint implements PDP {
       });
 
       // Now process child nodes from assignments (current node is the parent)
-      let assignmentsForCurrent = this.memory.getAssignmentsParent(currentNode);
-      assignmentsForCurrent.forEach(assign => {
-        let childNode = assign.getChild();
-        if (!visited.has(childNode)) {
-          visited.add(childNode);
-          queue.push(childNode); // Enqueue the child node for further processing
+      let childList = this.memory.getAssignmentsParent(currentNode.id);
+      childList.forEach(child => {
+        let node = this.memory.getNode(child);
+        if (node && !visited.has(node)) {
+          visited.add(node);
+          queue.push(node); // Enqueue the child node for further processing
         }
       });
     }
@@ -88,34 +88,20 @@ export default class PolicyDecisionPoint implements PDP {
    * @param startingNode The node to start searching from (i.e. association destination node)
    * @returns An array of object of interest nodes
    */
-  findObjects(startingNodeId: number): number[] {
-    // Perform reverse BFS starting from the starting node
-    const visited: Set<string> = new Set();  // Use string IDs for graphlib nodes
-    const queue: string[] = [startingNodeId.toString()]; // Queue to hold node IDs
-    visited.add(startingNodeId.toString());
+  findObjects(): number[] {
+    // Check all parent nodes in assignments if they are a child node (if not then topmost)
+    const assignments = this.memory.getAllAssignments();
+    const childNodes = new Set(assignments.map((assignment) => assignment.child));
+    const parentNodes = new Set(assignments.map((assignment) => assignment.parent));
 
-    while (queue.length > 0) {
-      const currentNodeId = queue.shift()!;
-      const parents = this.graph.inEdges(currentNodeId) || []; // Get reverse edges using inEdges()
-
-      for (const edge of parents) {
-        const parentNodeId = edge.v;  // Parent node ID (source of the reverse edge)
-        if (!visited.has(parentNodeId)) {
-          visited.add(parentNodeId);
-          queue.push(parentNodeId); // Enqueue the parent node ID
-        }
-      }
-    }
-
-    // Identify topmost nodes (objects of interest) - nodes that are not visited during reverse BFS
-    const objectsOfInterest: number[] = [];
-    this.graph.nodes().forEach((nodeId: string) => {
-      if (!visited.has(nodeId)) {
-        objectsOfInterest.push(Number(nodeId));  // Convert string ID to number and add to the result array
+    const result: number[] = [];
+    parentNodes.forEach((parent) => {
+      if (!childNodes.has(parent)) {
+        result.push(parent.id); // Add to result if it's not a child node
       }
     });
 
-    return objectsOfInterest;
+    return result;
   }
 
   // From the topmost nodes, find all policy classes associated with each node in its path
@@ -211,22 +197,19 @@ export default class PolicyDecisionPoint implements PDP {
    * @returns Boolean of whether access is granted or not
    */
   async evaluateRequest(user: number, resource: number, action: string): Promise<string> {
-    const accessibleObjects: Set<string> = new Set();
-    const assignments: Array<Assignment> = this.memory.getAllAssignments();
   
     // Get all source association nodes - Assuming this is an async function
-    const associations = this.getSourceNodes(user); 
+    var associations: Set<Association> = this.getSourceNodes(user);
   
     // Get a map of all destination nodes with allowable operations - Assuming this is an async function
     const destNodeIds = this.getDestNodes(associations);
   
-    const objectsOfInterest: Map<number, number[]> = new Map();
     const allOperations: Set<string>[] = [];
+    const objectIds: number[] = this.findObjects();
   
     // Iterate over destination node IDs and check conditions
     for (const [endNode, operations] of destNodeIds) {
-      const objectIds: number[] = this.findObjects(endNode); // Assuming this is an async function
-  
+       // Assuming this is an async function
       if (objectIds.some(id => id === resource) && 
           this.findPolicyClasses(resource, endNode)) { // Assuming async function
         allOperations.push(operations);
@@ -244,3 +227,4 @@ export default class PolicyDecisionPoint implements PDP {
     return "Not Granted";
   }
 }
+

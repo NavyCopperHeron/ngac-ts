@@ -1,5 +1,5 @@
-import type IPEP  from './PEP';
-import type IPDP  from './PDP';
+import type IPEP  from './pep.ts';
+import type IPDP  from './pdp.ts';
 /**
  * PolicyEnforcementPoint class
  * 

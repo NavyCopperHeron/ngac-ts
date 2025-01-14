@@ -1,6 +1,6 @@
 import { expect, test, describe, beforeEach } from "bun:test";
 import PolicyDecisionPoint from './PDPImpl';
-import Node from './Node';
+import Node from './node.ts';
 //wriiten by cursor
 describe('PolicyDecisionPoint', () => {
   let pdp: PolicyDecisionPoint;
@@ -24,7 +24,7 @@ describe('PolicyDecisionPoint', () => {
     pap.addNode(resource);
     
     // Create assignment (user -> group)
-    pap.createAssignment(group, user);
+    pap.createAssignment(user, group);
     
     // Create association (group -> resource with read permission)
     pap.createAssociation(group, resource, new Set(['read']));
@@ -54,13 +54,12 @@ describe('PolicyDecisionPoint', () => {
     pap.addNode(policyClass);
     
     // Create assignments
-    pap.createAssignment(group, user);  // user -> group
-    pap.createAssignment(policyClass, group);  // group -> policyClass
-    pap.createAssignment(policyClass, resource);  // resource -> policy class
+    pap.createAssignment(user, group);  // user -> group
+    pap.createAssignment(group, policyClass);  // group -> policyClass
+    pap.createAssignment(resource, policyClass);  // resource -> policy class
     
     // Create association with read permission
     pap.createAssociation(group, resource, new Set(['read']));
-
     const result = await pdp.evaluateRequest(1, 3, 'read');
     expect(result).toBe('Grant');
   });

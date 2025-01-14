@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { PolicyEnforcementPoint } from "./PEPImpl";
 import { PolicyInformationPoint } from "./PIPImpl";
 import PolicyDecisionPoint from "./PDPImpl";
-import Node from "./Node";
+import Node from "./node.ts";
 
 describe('NGAC Integration Tests', () => {
     test('complete NGAC workflow - should grant access when properly configured', async () => {
@@ -28,14 +28,15 @@ describe('NGAC Integration Tests', () => {
 
         // Create assignments
         console.log("Creating assignments...");
-        pap.createAssignment(developers, alice); // Alice is a developer
-        pap.createAssignment(projectPC, codeRepo); // CodeRepo is under ProjectPC
-        pap.createAssignment(codeRepo, sourceCode); // SourceCode is in CodeRepo
+        pap.createAssignment(alice, developers); // Alice is a developer
+        pap.createAssignment(codeRepo, projectPC); // CodeRepo is under ProjectPC
+        pap.createAssignment(sourceCode, codeRepo); // SourceCode is in CodeRepo
 
         // Create association
         console.log("Creating association...");
         pap.createAssociation(developers, codeRepo, new Set(["read", "write"]));
-
+        console.log("Association: ", pap.getAllAssociations())
+        
         // Store graph in PIP
         const graphJson = JSON.stringify(pap.getMainGraph());
         pip.storeGraph(graphJson);
@@ -45,6 +46,7 @@ describe('NGAC Integration Tests', () => {
         console.log("Retrieved graph:", retrievedGraph);
         // Test access request through PEP
         console.log("Testing access request...");
+        console.log("Association2: ", pdp.memory.getAllAssociations())
         const result = await pep.requestAccess(1, 4, "read"); // Alice trying to read SourceCode
 
         // Verify access is granted
@@ -72,9 +74,9 @@ describe('NGAC Integration Tests', () => {
         pap.addNode(securityPC);
 
         // Create assignments
-        pap.createAssignment(managers, bob);
-        pap.createAssignment(securityPC, secretDocs);
-        pap.createAssignment(secretDocs, document);
+        pap.createAssignment(bob, managers);
+        pap.createAssignment(secretDocs, securityPC);
+        pap.createAssignment(document, secretDocs);
 
         // Note: Deliberately not creating an association that would grant access
 
