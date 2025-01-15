@@ -151,14 +151,14 @@ test("PAP - Assignment Management", () => {
     expect(pap.getAllAssignments().length).toBe(1);
 
     // Test getAssignmentsParent
-    const parentAssignments = pap.getAssignmentsParent(parent);
+    const parentAssignments = pap.getAssignmentsParent(parent.id);
     expect(parentAssignments.length).toBe(1);
-    expect(parentAssignments[0].getChild().equals(child)).toBe(true);
+    expect(parentAssignments[0] == child.id).toBe(true);
 
     // Test getAssignmentsChild
-    const childAssignments = pap.getAssignmentsChild(child);
+    const childAssignments = pap.getAssignmentsChild(child.id);
     expect(childAssignments.length).toBe(1);
-    expect(childAssignments[0].getParent().equals(parent)).toBe(true);
+    expect(childAssignments[0] == parent.id).toBe(true);
 });
 
 test("PAP - Association Management", () => {
