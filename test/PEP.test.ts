@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { PolicyEnforcementPoint } from "./PEPImpl";
-import type IPDP  from './PDP';
+import { PolicyEnforcementPoint } from "../src/PEPImpl";
+import type IPDP  from '../src/PDP';
 // Mock PDP implementation
 class MockPDP implements IPDP {
     async evaluateRequest(user: number, resource: number, action: string): Promise<string> {

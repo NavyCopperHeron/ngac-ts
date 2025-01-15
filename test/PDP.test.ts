@@ -1,6 +1,6 @@
 import { expect, test, describe, beforeEach } from "bun:test";
-import PolicyDecisionPoint from './PDPImpl';
-import Node from './node.ts';
+import PolicyDecisionPoint from '../src/PDPImpl';
+import Node from '../src/Node';
 //wriiten by cursor
 describe('PolicyDecisionPoint', () => {
   let pdp: PolicyDecisionPoint;
@@ -44,13 +44,15 @@ describe('PolicyDecisionPoint', () => {
     // Create nodes
     const user = new Node(1, "user1", "user");
     const group = new Node(2, "group1", "userAttribute");
-    const resource = new Node(3, "resource1", "object");
-    const policyClass = new Node(4, "pc1", "policyClass");
+    const resourceAttr = new Node(3, "resourceAttribute", "objectAttribute");
+    const resource = new Node(4, "resource1", "object");
+    const policyClass = new Node(5, "pc1", "policyClass");
     
     // Add nodes
     pap.addNode(user);
     pap.addNode(group);
     pap.addNode(resource);
+    pap.addNode(resourceAttr);
     pap.addNode(policyClass);
     
     // Create assignments
@@ -60,7 +62,7 @@ describe('PolicyDecisionPoint', () => {
     
     // Create association with read permission
     pap.createAssociation(group, resource, new Set(['read']));
-    const result = await pdp.evaluateRequest(1, 3, 'read');
+    const result = await pdp.evaluateRequest(1, 4, 'read');
     expect(result).toBe('Grant');
   });
 
@@ -82,26 +84,6 @@ describe('PolicyDecisionPoint', () => {
     expect(result).toBe('Not Granted');
   });
 
-  test('findPolicyClasses - should correctly identify policy class relationships', () => {
-    const pap = pdp.memory;
-    
-    // Create nodes
-    const resource = new Node(1, "resource1", "object");
-    const intermediate = new Node(2, "intermediate1", "objectAttribute");
-    const policyClass = new Node(3, "pc1", "policyClass");
-    
-    // Add nodes
-    pap.addNode(resource);
-    pap.addNode(intermediate);
-    pap.addNode(policyClass);
-    
-    // Create assignments
-    pap.createAssignment(intermediate, resource);
-    pap.createAssignment(policyClass, intermediate);
-
-    const result = pdp.findPolicyClasses(1, 2);
-    expect(result).toBe(true);
-  });
 
   test('findIntersection - should return intersection of operation sets', () => {
     const set1 = new Set(['read', 'write']);

@@ -1,5 +1,4 @@
 import Association from './Association';
-import Assignment from './Assignment';
 import PAP from './PAPImpl';
 import Node from './node.ts';
 import { Graph } from 'graphlib';
@@ -88,22 +87,47 @@ export default class PolicyDecisionPoint implements PDP {
    * @param startingNode The node to start searching from (i.e. association destination node)
    * @returns An array of object of interest nodes
    */
-  findObjects(): number[] {
-    // Check all parent nodes in assignments if they are a child node (if not then topmost)
-    const assignments = this.memory.getAllAssignments();
-    const childNodes = new Set(assignments.map((assignment) => assignment.child));
-    const parentNodes = new Set(assignments.map((assignment) => assignment.parent));
-
+  findObjects(targetNode: number): number[] {
+    // List to store nodes with no incoming edges that have a path to targetNode
     const result: number[] = [];
-    parentNodes.forEach((parent) => {
-      if (!childNodes.has(parent)) {
-        result.push(parent.id); // Add to result if it's not a child node
+    
+    // Find all nodes with no incoming edges
+    const nodesWithNoIncomingEdges: string[] = [];
+    this.graph.nodes().forEach((nodeId) => {
+      const incomingEdges = this.graph.successors(nodeId);
+      if (!incomingEdges || incomingEdges.length === 0) {
+        nodesWithNoIncomingEdges.push(nodeId);
       }
     });
-
+  
+    // Check if there is a path from each of those nodes to the targetNode
+    nodesWithNoIncomingEdges.forEach((node) => {
+      // Perform DFS or BFS to see if there's a path from 'node' to 'targetNode'
+      const visited = new Set<string>();
+      
+      const dfs = (currentNode: string): boolean => {
+        if (currentNode === String(targetNode)) return true;
+        if (visited.has(currentNode)) return false;
+        visited.add(currentNode);
+        // Recurse over all neighbors of the current node
+        const neighbors = this.graph.predecessors(currentNode) || [];
+        for (const neighbor of neighbors) {
+          if (dfs(neighbor)) {
+            return true;
+          }
+        }
+  
+        return false;
+      };
+  
+      // If there's a path from the node to the targetNode, add it to the result
+      if (dfs(node)) {
+        result.push(parseInt(node));
+      }
+    });
+  
     return result;
   }
-
   // From the topmost nodes, find all policy classes associated with each node in its path
   /**
    * From the object of interest, find all policy classes associated with each node in its path
@@ -112,7 +136,7 @@ export default class PolicyDecisionPoint implements PDP {
    * @param destNode the association destination node linked with the target object of interest
    * @returns Boolean indicating if the object of interest is connected to all policy classes that the destination node is connected to
    */
-  findPolicyClasses(objectOfInterestId: number, destNodeId: number): Boolean {
+  findPolicyClasses(objectOfInterestId: number, destNodeId: number): [Set<number>, Set<number>] {
 
     // Find policy classes (nodes with no children) in the combined graph
     const policyClasses: Set<number> = new Set();
@@ -161,13 +185,8 @@ export default class PolicyDecisionPoint implements PDP {
 
     const objSet = nodeLabels.get(objectOfInterestId) || new Set();
     const destSet = nodeLabels.get(destNodeId) || new Set();
-    
-    // Check if the object of interest contains all policy classes that include the destination node
-    if ([...destSet].every(item => objSet.has(item))) {
-      return true;
-    }
 
-    return false;
+    return [objSet,destSet];
   }
 
   /**
@@ -205,7 +224,13 @@ export default class PolicyDecisionPoint implements PDP {
     const destNodeIds = this.getDestNodes(associations);
   
     const allOperations: Set<string>[] = [];
-    const objectIds: number[] = this.findObjects();
+    
+    let objectIds: number[] = [];
+    destNodeIds.forEach((set, id) => {
+      const result = this.findObjects(id);
+      objectIds = objectIds.concat(result);  // Append the result to objectIds array
+    });
+    console.log("objectids: ", objectIds)
   
     // Iterate over destination node IDs and check conditions
     for (const [endNode, operations] of destNodeIds) {
@@ -218,6 +243,7 @@ export default class PolicyDecisionPoint implements PDP {
   
     // Find intersection of all allowed operations
     const intersection: Set<string> = this.findIntersection(allOperations);
+    console.log(intersection)
   
     // Check if the requested action is in the intersection
     if (intersection.has(action)) {
