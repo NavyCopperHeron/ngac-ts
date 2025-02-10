@@ -1,8 +1,8 @@
 import { expect, test, describe } from "bun:test";
 import { PolicyEnforcementPoint } from "../src/PEPImpl";
 import { PolicyInformationPoint } from "../src/PIPImpl";
-import PolicyDecisionPoint from "../src/PDPImpl";
-import Node from "../src/Node";
+import {PolicyDecisionPoint} from "../src/PDPImpl";
+import {Node} from "../src/node";
 
 describe('NGAC Integration Tests', () => {
     test('complete NGAC workflow - should grant access when properly configured', async () => {

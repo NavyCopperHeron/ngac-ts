@@ -16,7 +16,7 @@ class Property {
 }
 
 // Node class
-export default class Node {
+export class Node {
     id: number;
     name: string;
     type: string;

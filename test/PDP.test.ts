@@ -1,6 +1,6 @@
 import { expect, test, describe, beforeEach } from "bun:test";
 import PolicyDecisionPoint from '../src/PDPImpl';
-import Node from '../src/Node';
+import Node from '../src/node';
 //wriiten by cursor
 describe('PolicyDecisionPoint', () => {
   let pdp: PolicyDecisionPoint;

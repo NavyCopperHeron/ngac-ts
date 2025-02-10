@@ -3,14 +3,14 @@ import Assignment from './Assignment';
 
 import { Graph } from 'graphlib';
 import type PAP from './pap.ts';
-import Node from './node.ts';
+import {Node} from './node.ts';
 import type { Edge } from 'graphlib';
 /**
  * Policy Administration Point (PAP)
  * 
  * Implements the management of nodes, edges, and the directed graph.
  */
-export default class PolicyAdministrationPoint implements PAP {
+export class PolicyAdministrationPoint implements PAP {
     private graph: Graph;
     private assignments: Array<Assignment>;
     private associations: Array<Association>;

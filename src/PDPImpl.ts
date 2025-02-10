@@ -1,6 +1,6 @@
 import Association from './Association';
-import PAP from './PAPImpl';
-import Node from './node.ts';
+import {PolicyAdministrationPoint} from './PAPImpl';
+import {Node} from './node.ts';
 import { Graph } from 'graphlib';
 import type PDP from './pdp.ts';
 
@@ -10,12 +10,12 @@ interface evaluateRequest {
   action: Set<String>; // e.g. read, write
 }
 
-export default class PolicyDecisionPoint implements PDP {
-  memory: PAP;
+export class PolicyDecisionPoint implements PDP {
+  memory: PolicyAdministrationPoint;
   graph: Graph;
 
   constructor() {
-    this.memory = new PAP;
+    this.memory = new PolicyAdministrationPoint;
     this.graph = this.memory.getMainGraph()
   }
 

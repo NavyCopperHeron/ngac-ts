@@ -1,5 +1,5 @@
 import { PolicyEnforcementPoint } from "../src/PEPImpl";
-import type PDP  from "../src/PDP";
+import type PDP  from "../src/pdp";
 import { expect, test, beforeEach, it, jest } from "bun:test";
 //writing by Copilot
 test("PolicyEnforcementPoint", () => {

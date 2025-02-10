@@ -1,4 +1,4 @@
-import Node from './node.ts';
+import {Node} from './node.ts';
 
 export default class Assignment {
     parent: Node;

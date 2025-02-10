@@ -1,6 +1,6 @@
 import { Graph } from 'graphlib';
 import type { Edge } from 'graphlib';
-import Node from './node.ts';
+import {Node} from './node.ts';
 import Association from './Association';
 import Assignment from './Assignment';
 /**

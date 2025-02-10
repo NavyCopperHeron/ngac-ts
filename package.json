@@ -1,14 +1,29 @@
 {
   "name": "ngac-ts",
-  "module": "index.ts",
+  "version": "1.0.3",
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/graphlib": "^2.1.12"
   },
-  "scripts": {
-    "start": "bun run index.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js", 
+      "types": "./dist/index.d.ts"
+    }
   },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist && tsc --emitDeclarationOnly --declaration --outDir ./dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NavyCopperHeron/ngac-ts.git"
+  },
+  "author": "NavyCopperHeron",
+  "license": "Apache-2.0 license",
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
