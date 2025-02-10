@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import {PolicyAdministrationPoint} from "../src/PAPImpl";
-import {Node} from "../src/Node";
+import {Node} from "../src/node";
 import { Graph } from "graphlib";
 // written by Cline
 test("PAP - Node Management", () => {
